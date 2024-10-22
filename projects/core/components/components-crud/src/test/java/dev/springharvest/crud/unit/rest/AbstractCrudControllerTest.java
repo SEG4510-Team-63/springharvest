@@ -125,7 +125,7 @@ class AbstractCrudControllerTest {
   }
 
   @Test
-  void deleteAllByIdPerformsCorrectly() {
+  public void deleteAllByIdPerformsCorrectly() {
     List<Long> ids = Collections.singletonList(1L);
     doNothing().when(crudService).deleteById(ids);
 
@@ -136,7 +136,7 @@ class AbstractCrudControllerTest {
   }
 
   @Test
-  void updateAllReturnsUpdatedEntities() {
+  public void updateAllReturnsUpdatedEntities() {
     BaseDTO<Long> dto1 = mock(BaseDTO.class);
     BaseDTO<Long> dto2 = mock(BaseDTO.class);
 
@@ -145,14 +145,13 @@ class AbstractCrudControllerTest {
 
     List<BaseDTO<Long>> dtos = List.of(dto1, dto2);
 
+    BaseEntity<Long> entity1 = mock(BaseEntity.class);
+    BaseEntity<Long> entity2 = mock(BaseEntity.class);
 
-    List<BaseEntity<Long>> entities = dtos.stream()
-            .map(dto -> {
-              BaseEntity<Long> entity = mock(BaseEntity.class);
-              when(entity.getId()).thenReturn(dto.getId());
-              return entity;
-            })
-            .collect(Collectors.toList());
+    when(entity1.getId()).thenReturn(1L);
+    when(entity2.getId()).thenReturn(2L);
+
+    List<BaseEntity<Long>> entities = List.of(entity1, entity2);
 
     when(crudService.findAllByIds(anySet())).thenReturn(entities);
     when(modelMapper.entityToDto(anyList())).thenReturn(dtos); //To recheck

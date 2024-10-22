@@ -1,5 +1,11 @@
 package dev.springharvest.testing.domains.integration.shared.domains.base.factories;
 
+import java.time.ZoneId;
+import java.util.List;
+
+import org.apache.commons.lang3.ObjectUtils;
+import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.Assertions;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import dev.springharvest.shared.domains.DomainModel;
@@ -9,12 +15,6 @@ import dev.springharvest.shared.domains.embeddables.traces.traceable.models.dtos
 import dev.springharvest.shared.domains.embeddables.traces.users.models.dtos.AbstractTraceUsersDTO;
 import dev.springharvest.shared.utils.StringUtils;
 import jakarta.annotation.Nullable;
-import java.util.List;
-import org.apache.commons.lang3.ObjectUtils;
-import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.Assertions;
-
-import java.time.ZoneId;
 
 
 public interface IDomainModelFactory<D extends DomainModel> {
@@ -67,8 +67,21 @@ I added a condition to skip assertions if either actual or expected are null.
 
       softly.assertThat(actualTraceDates).isNotNull();
       softly.assertThat(expectedTraceDates).isNotNull();
-      long actualTimeInMilliSeconds = actualTraceDates.getDateCreated().atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli();
-      long expectedTimeInMilliSeconds = expectedTraceDates.getDateUpdated().atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli();
+      long actualTimeInMilliSeconds = actualTraceDates.getDateCreated()
+      .toInstant()
+      .atZone(ZoneId.of("UTC"))
+      .toLocalDate()
+      .atStartOfDay(ZoneId.of("UTC"))
+      .toInstant()
+      .toEpochMilli();
+      
+      long expectedTimeInMilliSeconds = expectedTraceDates.getDateUpdated()
+      .toInstant()
+      .atZone(ZoneId.of("UTC"))
+      .toLocalDate()
+      .atStartOfDay(ZoneId.of("UTC"))
+      .toInstant()
+      .toEpochMilli();
 
       long createdTimeDifferenceInMilliSeconds = actualTimeInMilliSeconds - expectedTimeInMilliSeconds;
       long createdTimeDifferenceInSeconds = createdTimeDifferenceInMilliSeconds / 1000;
