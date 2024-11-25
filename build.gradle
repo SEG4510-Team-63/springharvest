@@ -76,8 +76,12 @@ allprojects {
         mavenCentral()
     }
 
-    if (file('secrets.gradle').exists()) {
-        apply from: 'secrets.gradle'
+    def secrets_file = "$projectDir/secrets.gradle"
+    if (project.file(secrets_file).exists()) {
+        File secrets = new File(secrets_file)
+        secrets.withInputStream {
+            env.load(it)
+        }
     }
 
 

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.springharvest.shared.domains.DomainModel;
 import dev.springharvest.shared.domains.embeddables.traces.dates.ITraceableDatesAware;
-import java.time.LocalDate;
+import java.util.Date;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,9 +20,9 @@ import org.apache.commons.lang3.ObjectUtils;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TraceDatesDTO extends DomainModel implements ITraceableDatesAware {
 
-  protected LocalDate dateCreated;
+  protected Date dateCreated;
 
-  protected LocalDate dateUpdated;
+  protected Date dateUpdated;
 
   @JsonIgnore
   @Override

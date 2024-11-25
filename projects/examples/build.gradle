@@ -76,7 +76,6 @@ subprojects {
         testImplementation "org.hamcrest:hamcrest-all"
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         testImplementation 'org.testcontainers:junit-jupiter'
-
         implementation "org.hibernate.orm:hibernate-jpamodelgen"
         implementation "org.modelmapper:modelmapper"
         developmentOnly 'org.springframework.boot:spring-boot-devtools'

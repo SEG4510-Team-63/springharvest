@@ -11,16 +11,16 @@ import jakarta.validation.Valid;
 import java.io.Serializable;
 import java.lang.reflect.ParameterizedType;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
-import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -140,7 +140,7 @@ public abstract class AbstractCrudService<E extends BaseEntity<K>, K extends Ser
       if (traceData != null) {
         if (ObjectUtils.isNotEmpty(traceData.getTraceDates())) {
           TraceDatesEntity traceDates = traceData.getTraceDates();
-          final LocalDate utcTimeStamp = LocalDate.ofInstant(Instant.now(), ZoneOffset.UTC);
+          final Date utcTimeStamp = Date.from(Instant.now());
           traceDates.setDateUpdated(utcTimeStamp);
           traceData.setTraceDates(traceDates);
         }
@@ -168,7 +168,7 @@ public abstract class AbstractCrudService<E extends BaseEntity<K>, K extends Ser
     entity.setId(null);
 
     if (entity instanceof ITraceableEntity<?>) {
-      final LocalDate utcTimeStamp = LocalDate.ofInstant(Instant.now(), ZoneOffset.UTC);
+      final Date utcTimeStamp = Date.from(Instant.now());
       ((ITraceableEntity<Serializable>) entity).setTraceData(TraceDataEntity.builder()
                                                                  .traceDates(TraceDatesEntity.builder()
                                                                                  .dateCreated(utcTimeStamp)

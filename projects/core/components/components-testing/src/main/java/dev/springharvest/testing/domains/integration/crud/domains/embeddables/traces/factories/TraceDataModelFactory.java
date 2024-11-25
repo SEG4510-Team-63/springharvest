@@ -4,8 +4,6 @@ import dev.springharvest.shared.domains.embeddables.traces.dates.models.dtos.Tra
 import dev.springharvest.shared.domains.embeddables.traces.trace.models.dtos.TraceDataDTO;
 import dev.springharvest.testing.domains.integration.shared.domains.base.factories.IDomainModelFactory;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.Date;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +12,7 @@ public class TraceDataModelFactory implements IDomainModelFactory<TraceDataDTO> 
 
   @Override
   public TraceDataDTO buildValidDto() {
-    final LocalDate utcTimeStamp = LocalDate.ofInstant(Instant.now(), ZoneOffset.UTC);
+    final Date utcTimeStamp = Date.from(Instant.now());
     return TraceDataDTO.builder()
         .traceDates(TraceDatesDTO.builder()
                         .dateCreated(utcTimeStamp)
@@ -26,7 +24,7 @@ public class TraceDataModelFactory implements IDomainModelFactory<TraceDataDTO> 
 
   @Override
   public TraceDataDTO buildValidUpdatedDto(TraceDataDTO dto) {
-    final LocalDate utcTimeStamp = LocalDate.ofInstant(Instant.now(), ZoneOffset.UTC);
+    final Date utcTimeStamp = Date.from(Instant.now());
     TraceDatesDTO traceDates = dto.getTraceDates();
     traceDates.setDateUpdated(utcTimeStamp);
     dto.setTraceDates(traceDates);

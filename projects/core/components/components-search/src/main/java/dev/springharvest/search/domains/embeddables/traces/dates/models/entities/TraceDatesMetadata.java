@@ -7,8 +7,6 @@ import dev.springharvest.errors.constants.ExceptionMessages;
 import dev.springharvest.search.domains.base.models.entities.EntityMetadata;
 import dev.springharvest.shared.domains.embeddables.traces.dates.models.entities.TraceDatesEntity;
 import dev.springharvest.shared.domains.embeddables.traces.dates.models.entities.TraceDatesEntity_;
-
-import java.time.LocalDate;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -68,8 +66,8 @@ public class TraceDatesMetadata extends EntityMetadata<TraceDatesEntity> {
                                                                                );
 
         private static final Map<String, BiConsumer<TraceDatesEntity, Object>> ROOT_MAPPING_FUNCTIONS = Map.of(
-            DATE_CREATED, (entity, value) -> entity.setDateCreated((LocalDate) value),
-            DATE_UPDATED, (entity, value) -> entity.setDateUpdated((LocalDate) value)
+            DATE_CREATED, (entity, value) -> entity.setDateCreated((Date) value),
+            DATE_UPDATED, (entity, value) -> entity.setDateUpdated((Date) value)
                                                                                                               );
 
         private Maps() {

@@ -5,7 +5,7 @@ import dev.springharvest.shared.domains.DomainModel;
 import dev.springharvest.shared.domains.embeddables.traces.dates.ITraceableDatesAware;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import java.time.LocalDate;
+import java.util.Date;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,10 +22,10 @@ import org.apache.commons.lang3.ObjectUtils;
 public class TraceDatesEntity extends DomainModel implements ITraceableDatesAware {
 
   @Column(name = "date_created", updatable = false, nullable = false)
-  protected LocalDate dateCreated;
+  protected Date dateCreated;
 
   @Column(name = "date_updated", updatable = true, nullable = false)
-  protected LocalDate dateUpdated;
+  protected Date dateUpdated;
 
   @JsonIgnore
   @Override

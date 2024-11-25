@@ -8,6 +8,7 @@ import dev.springharvest.shared.domains.embeddables.traces.traceable.models.enti
 import dev.springharvest.shared.domains.embeddables.traces.users.models.entities.TraceUsersEntity;
 import jakarta.persistence.EntityExistsException;
 import jakarta.validation.Valid;
+import java.util.Date;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.domain.Page;
@@ -29,7 +30,7 @@ import java.util.List;
  * @param <E> The entity type, which extends BaseEntity<K>
  * @param <K> The type of the primary key field, which extends Serializable
  *
- * @see ISpecificationCrudService
+// * @see ISpecificationCrudService
  * @see BaseEntity
  * @since 1.0
  */
@@ -229,7 +230,7 @@ public abstract class AbstractQueryCrudService<E extends BaseEntity<K>, K extend
             if (traceData != null) {
                 if (ObjectUtils.isNotEmpty(traceData.getTraceDates())) {
                     TraceDatesEntity traceDates = traceData.getTraceDates();
-                    final LocalDate utcTimeStamp = LocalDate.ofInstant(Instant.now(), ZoneOffset.UTC);
+                    final Date utcTimeStamp = Date.from(Instant.now());
                     traceDates.setDateUpdated(utcTimeStamp);
                     traceData.setTraceDates(traceDates);
                 }
@@ -274,7 +275,7 @@ public abstract class AbstractQueryCrudService<E extends BaseEntity<K>, K extend
         entity.setId(null);
 
         if (entity instanceof ITraceableEntity<?>) {
-            final LocalDate utcTimeStamp = LocalDate.ofInstant(Instant.now(), ZoneOffset.UTC);
+            final Date utcTimeStamp = Date.from(Instant.now());
             ((ITraceableEntity<Serializable>) entity).setTraceData(TraceDataEntity.builder()
                     .traceDates(TraceDatesEntity.builder()
                             .dateCreated(utcTimeStamp)
