@@ -96,10 +96,11 @@ var POSTGRES_VERSION = "42.7.2"
 var RESTASSURED_VERSION = "5.4.0"
 var SNAKE_YAML_VERSION = "2.2"
 var SPRING_BATCH_EXCEL_VERSION = "0.1.1"
-var SPRING_CLOUD_AZURE_VERSION = "5.10.0"
+var SPRING_CLOUD_AZURE_VERSION = "5.12.0"
 var SPRINGDOC_VERSION = "2.4.0"
 var SQUAREUP_JAVAPOET_VERSION = "1.13.0"
-var TESTCONTAINERS_VERSION = "1.19.7"
+var TESTCONTAINERS_VERSION = "1.19.8"
+var XMLUNIT_VERSION = "2.10.0"
 
 dependencies {
     api(platform("org.testcontainers:testcontainers-bom:$TESTCONTAINERS_VERSION"))
@@ -313,6 +314,12 @@ dependencies {
         api("org.testcontainers:testcontainers-bom") {
             version {
                 strictly("$TESTCONTAINERS_VERSION")
+            }
+        }
+
+        api("org.xmlunit:xmlunit-core") {
+            version {
+                strictly("$XMLUNIT_VERSION")
             }
         }
 
