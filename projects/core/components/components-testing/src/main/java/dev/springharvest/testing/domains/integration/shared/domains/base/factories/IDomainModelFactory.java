@@ -16,6 +16,12 @@ import dev.springharvest.shared.domains.embeddables.traces.users.models.dtos.Abs
 import dev.springharvest.shared.utils.StringUtils;
 import jakarta.annotation.Nullable;
 
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import org.apache.commons.lang3.ObjectUtils;
+import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.Assertions;
 
 public interface IDomainModelFactory<D extends DomainModel> {
 
@@ -67,23 +73,11 @@ I added a condition to skip assertions if either actual or expected are null.
 
       softly.assertThat(actualTraceDates).isNotNull();
       softly.assertThat(expectedTraceDates).isNotNull();
-      long actualTimeInMilliSeconds = actualTraceDates.getDateCreated()
-      .toInstant()
-      .atZone(ZoneId.of("UTC"))
-      .toLocalDate()
-      .atStartOfDay(ZoneId.of("UTC"))
-      .toInstant()
-      .toEpochMilli();
-      
-      long expectedTimeInMilliSeconds = expectedTraceDates.getDateUpdated()
-      .toInstant()
-      .atZone(ZoneId.of("UTC"))
-      .toLocalDate()
-      .atStartOfDay(ZoneId.of("UTC"))
-      .toInstant()
-      .toEpochMilli();
+      long createdTimeDifferenceInMilliSeconds = ChronoUnit.MILLIS.between(
+              actualTraceDates.getDateCreated().atStartOfDay(ZoneId.systemDefault()).toInstant(),
+              expectedTraceDates.getDateUpdated().atStartOfDay(ZoneId.systemDefault()).toInstant()
+      );
 
-      long createdTimeDifferenceInMilliSeconds = actualTimeInMilliSeconds - expectedTimeInMilliSeconds;
       long createdTimeDifferenceInSeconds = createdTimeDifferenceInMilliSeconds / 1000;
       long createdTimeDifferenceInMinutes = createdTimeDifferenceInSeconds / 60;
       // If the following two assertions fail, then there is a performance issue.
