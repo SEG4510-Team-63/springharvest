@@ -1,9 +1,9 @@
-package dev.springharvest.testing.domains.integration.shared.domains.base.factories;
+package dev.springharvest.testing.domains.integration.shared.tests;
 
 import dev.springharvest.shared.domains.DomainModel;
+import dev.springharvest.testing.domains.integration.shared.domains.base.factories.IDomainModelFactory;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class IDomainModelFactoryTest {
 
