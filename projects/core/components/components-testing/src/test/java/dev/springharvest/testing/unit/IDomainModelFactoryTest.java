@@ -1,4 +1,4 @@
-package dev.springharvest.testing.domains.integration.shared.tests;
+package dev.springharvest.testing.unit;
 
 import dev.springharvest.shared.domains.DomainModel;
 import dev.springharvest.testing.domains.integration.shared.domains.base.factories.IDomainModelFactory;
