@@ -9,7 +9,7 @@ import dev.springharvest.library.domains.books.integration.utils.clients.BookSea
 import dev.springharvest.library.domains.books.integration.utils.factories.BookSearchModelFactory;
 import dev.springharvest.library.domains.books.models.dtos.BookDTO;
 import dev.springharvest.library.domains.books.models.queries.BookFilterRequestDTO;
-import dev.springharvest.testing.domains.integration.search.tests.AbstractSearchITTest;
+import dev.springharvest.testing.domains.integration.search.tests.AbstractSearchIT;
 import java.util.UUID;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
