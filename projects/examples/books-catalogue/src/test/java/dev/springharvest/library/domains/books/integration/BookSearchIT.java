@@ -28,7 +28,7 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 @TestPropertySource(locations = "classpath:application.properties")
 @ActiveProfiles("test")
-class BookSearchIT extends AbstractSearchITTest<BookDTO, UUID, BookFilterRequestDTO> {
+class BookSearchIT extends AbstractSearchIT<BookDTO, UUID, BookFilterRequestDTO> {
 
   @Autowired
   public BookSearchIT(BookSearchClient searchClient, BookSearchModelFactory modelFactory) {

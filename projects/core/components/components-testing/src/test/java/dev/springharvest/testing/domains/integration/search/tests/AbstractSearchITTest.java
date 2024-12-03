@@ -11,9 +11,8 @@ import dev.springharvest.search.domains.base.models.queries.requests.search.Sear
 import dev.springharvest.shared.domains.base.models.dtos.BaseDTO;
 import dev.springharvest.testing.domains.integration.search.clients.AbstractSearchClientImpl;
 import dev.springharvest.testing.domains.integration.search.factories.ISearchModelFactory;
-import java.io.Serializable;
+
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.assertj.core.api.SoftAssertions;
@@ -117,7 +116,7 @@ class AbstractSearchITTest {
             verify(client).searchExistsAndExtract(any());
         }
 
-        private List<BaseDTO<Long>> mockEntities(int count) {
+        private List mockEntities(int count) {
             return Stream.generate(() -> mock(BaseDTO.class)).limit(count).collect(Collectors.toList());
         }
     }
