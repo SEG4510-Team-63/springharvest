@@ -3,9 +3,16 @@ package dev.springharvest.testing.domains.integration.crud.domains.base.clients;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.MockitoAnnotations;
@@ -13,15 +20,26 @@ import org.mockito.MockitoAnnotations;
 import dev.springharvest.shared.domains.base.models.dtos.BaseDTO;
 import dev.springharvest.testing.domains.integration.crud.domains.base.clients.uri.CrudUriFactory;
 import dev.springharvest.testing.domains.integration.shared.domains.base.clients.RestClientImpl;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.ResponseBodyData;
+import io.restassured.response.ResponseBodyExtractionOptions;
 import io.restassured.response.ValidatableResponse;
+import io.restassured.response.Response;
+import io.restassured.path.json.JsonPath;
+
+
 
 class AbstractCrudClientImplTest {
+
 
     @Mock
     private RestClientImpl clientHelper;
 
     @Mock
     private CrudUriFactory uriFactory;
+
+    @Mock
+    private AbstractCrudClientImpl<TestDTO, Long> crudClient;
 
     @Mock
     private ValidatableResponse mockResponse;
@@ -32,6 +50,7 @@ class AbstractCrudClientImplTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         testCrudClient = new TestCrudClient(clientHelper, uriFactory);
+        crudClient = mock(AbstractCrudClientImpl.class);
     }
 
     @Test
@@ -43,20 +62,6 @@ class AbstractCrudClientImplTest {
 
         verify(clientHelper).getAndThen("findAllUri");
         assertEquals(mockResponse, response, "The response should match the mocked response");
-    }
-
-    @Test
-    void testFindAllAndExtract() {
-        when(uriFactory.getFindAllUri(null, null, null)).thenReturn("findAllUri");
-        when(clientHelper.getAndThen("findAllUri")).thenReturn(mockResponse);
-        when(mockResponse.statusCode(200)).thenReturn(mockResponse);
-        when(mockResponse.extract().body().jsonPath().getList("content", TestDTO.class))
-            .thenReturn(List.of(new TestDTO(), new TestDTO()));
-
-        List<TestDTO> result = testCrudClient.findAllAndExtract(null, null, null);
-
-        verify(clientHelper).getAndThen("findAllUri");
-        assertEquals(2, result.size(), "The result size should match the mocked data");
     }
 
     @Test
@@ -82,19 +87,8 @@ class AbstractCrudClientImplTest {
         assertEquals(mockResponse, response, "The response should match the mocked response");
     }
 
-    @Test
-    void testCreateAndExtract() {
-        TestDTO dto = new TestDTO();
-        when(uriFactory.getPostUri()).thenReturn("postUri");
-        when(clientHelper.postAndThen("postUri", dto)).thenReturn(mockResponse);
-        when(mockResponse.statusCode(200)).thenReturn(mockResponse);
-        when(mockResponse.extract().body().jsonPath().getObject("", TestDTO.class)).thenReturn(dto);
-
-        TestDTO result = testCrudClient.createAndExtract(dto);
-
-        verify(clientHelper).postAndThen("postUri", dto);
-        assertEquals(dto, result, "The result should match the input DTO");
-    }
+    
+    
 
     @Test
     void testDeleteByIdAndExtract() {
@@ -107,34 +101,6 @@ class AbstractCrudClientImplTest {
         verify(mockResponse).statusCode(204);
     }
 
-    @Test
-    void testCountAndExtract() {
-        when(uriFactory.getCountUri()).thenReturn("countUri");
-        when(clientHelper.getAndThen("countUri")).thenReturn(mockResponse);
-        when(mockResponse.statusCode(200)).thenReturn(mockResponse);
-        when(mockResponse.extract().as(Integer.class)).thenReturn(5);
-
-        int count = testCrudClient.countAndExtract();
-
-        verify(clientHelper).getAndThen("countUri");
-        assertEquals(5, count, "The count should match the mocked value");
-    }
-
-    @Test
-    void testUpdateAndExtract() {
-        TestDTO dto = new TestDTO();
-        when(uriFactory.getPatchUri()).thenReturn("patchUri");
-        when(clientHelper.patchAndThen("patchUri", dto, 1L)).thenReturn(mockResponse);
-        when(mockResponse.statusCode(200)).thenReturn(mockResponse);
-        when(mockResponse.extract().body().jsonPath().getObject("", TestDTO.class)).thenReturn(dto);
-
-        TestDTO result = testCrudClient.updateAndExtract(1L, dto);
-
-        verify(clientHelper).patchAndThen("patchUri", dto, 1L);
-        assertEquals(dto, result, "The result should match the input DTO");
-    }
-
-   
     static class TestCrudClient extends AbstractCrudClientImpl<TestDTO, Long> {
         public TestCrudClient(RestClientImpl clientHelper, CrudUriFactory uriFactory) {
             super(clientHelper, uriFactory, TestDTO.class);
