@@ -8,7 +8,7 @@ import dev.springharvest.library.domains.authors.integration.utils.factories.Aut
 import dev.springharvest.library.domains.authors.models.dtos.AuthorDTO;
 import dev.springharvest.library.domains.authors.models.queries.AuthorFilterRequestDTO;
 import dev.springharvest.testing.constants.TestConstants;
-import dev.springharvest.testing.domains.integration.search.tests.AbstractSearchIT;
+import dev.springharvest.testing.domains.integration.search.tests.AbstractSearchITTest;
 import java.util.UUID;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 @TestPropertySource(locations = "classpath:application.properties")
 @ActiveProfiles("test")
-class AuthorSearchIT extends AbstractSearchIT<AuthorDTO, UUID, AuthorFilterRequestDTO> {
+class AuthorSearchIT extends AbstractSearchITTest<AuthorDTO, UUID, AuthorFilterRequestDTO> {
 
   @Autowired
   public AuthorSearchIT(AuthorSearchClient searchClient, AuthorSearchModelFactory modelFactory) {

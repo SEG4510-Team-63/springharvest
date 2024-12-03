@@ -9,7 +9,7 @@ import dev.springharvest.library.domains.books.integration.utils.clients.BookSea
 import dev.springharvest.library.domains.books.integration.utils.factories.BookSearchModelFactory;
 import dev.springharvest.library.domains.books.models.dtos.BookDTO;
 import dev.springharvest.library.domains.books.models.queries.BookFilterRequestDTO;
-import dev.springharvest.testing.domains.integration.search.tests.AbstractSearchIT;
+import dev.springharvest.testing.domains.integration.search.tests.AbstractSearchITTest;
 import java.util.UUID;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 @TestPropertySource(locations = "classpath:application.properties")
 @ActiveProfiles("test")
-class BookSearchIT extends AbstractSearchIT<BookDTO, UUID, BookFilterRequestDTO> {
+class BookSearchIT extends AbstractSearchITTest<BookDTO, UUID, BookFilterRequestDTO> {
 
   @Autowired
   public BookSearchIT(BookSearchClient searchClient, BookSearchModelFactory modelFactory) {
