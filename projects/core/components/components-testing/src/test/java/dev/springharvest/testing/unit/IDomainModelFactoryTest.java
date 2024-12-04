@@ -1,10 +1,16 @@
 package dev.springharvest.testing.unit;
 
 import dev.springharvest.shared.domains.DomainModel;
+import dev.springharvest.shared.domains.embeddables.traces.dates.models.dtos.TraceDatesDTO;
+import dev.springharvest.shared.domains.embeddables.traces.trace.models.dtos.TraceDataDTO;
+import dev.springharvest.shared.domains.embeddables.traces.traceable.models.dtos.ITraceableDTO;
+import dev.springharvest.shared.domains.embeddables.traces.users.models.dtos.AbstractTraceUsersDTO;
 import dev.springharvest.testing.domains.integration.shared.domains.base.factories.IDomainModelFactory;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.error.AssertJMultipleFailuresError;
 import org.junit.jupiter.api.Test;
+
+import java.util.UUID;
 
 import static org.junit.Assert.assertThrows;
 
@@ -118,5 +124,57 @@ public class IDomainModelFactoryTest {
             domainModelFactory.softlyAssert(softly, 123, 456); // Different integers
             softly.assertAll(); // Should throw an exception due to assertion failure
         });
+    }
+
+    @Test
+    void softlyAssertWithNullActual() {
+        SoftAssertions softly = new SoftAssertions();
+        domainModelFactory.softlyAssert(softly, null, new DomainModel() {
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+        });
+        softly.assertAll();
+    }
+
+    @Test
+    void softlyAssertWithNullExpected() {
+        SoftAssertions softly = new SoftAssertions();
+        domainModelFactory.softlyAssert(softly, new DomainModel() {
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+        }, null);
+        softly.assertAll();
+    }
+
+    @Test
+    void softlyAssertWithBothNull() {
+        SoftAssertions softly = new SoftAssertions();
+        domainModelFactory.softlyAssert(softly, (DomainModel) null, (DomainModel) null);
+        softly.assertAll();
+    }
+    
+    @Test
+    void softlyAssertWithNonTraceableDTOs() {
+        SoftAssertions softly = new SoftAssertions();
+        DomainModel actual = new DomainModel() {
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+        };
+
+        DomainModel expected = new DomainModel() {
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+        };
+
+        domainModelFactory.softlyAssert(softly, actual, expected);
+        softly.assertAll();
     }
 }

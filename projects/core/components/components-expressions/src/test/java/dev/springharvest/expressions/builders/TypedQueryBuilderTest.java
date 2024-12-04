@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
@@ -95,6 +96,9 @@ class TypedQueryBuilderTest {
     @Mock
     private Expression<Long> countExpression;
 
+    @Mock
+    Predicate mockPredicate;
+
     private Class<Author> entityClass = Author.class;
     private Class<UUID> keyClass = UUID.class;
 
@@ -123,6 +127,7 @@ class TypedQueryBuilderTest {
         when(entityManager.createQuery(criteriaQuery)).thenReturn(query);
         when(criteriaBuilder.count(any(Path.class))).thenReturn(countExpression);
         when(countExpression.alias(anyString())).thenReturn(countExpression);
+        when(criteriaBuilder.not(any(Predicate.class))).thenReturn(mockPredicate);
     }
 
     @Test
@@ -325,6 +330,68 @@ class TypedQueryBuilderTest {
         assertThrows(RuntimeException.class, () -> {
             typedQueryBuilder.parseFilterExpression(Operation.SEARCH, entityClass, keyClass, filter, clauseMap, fields, joins, aggregates, paging);
         });
+    }
+
+    @Test
+    void testCreateTypedQuery() throws Exception {
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createTypedQuery", Map.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        Map<String, Object> filterMap = new HashMap<>();
+        Map<String, Object> equals = new LinkedHashMap<>();
+        equals.put("containsic", "Paulo");
+        filterMap.put("name", equals);
+        String parentPath = "";
+        String rootOperator = "and";
+        List<String> fields = List.of("Author.name");
+        when(root.get("name")).thenReturn(authorPath);
+        when(criteriaBuilder.lower((Path)authorPath)).thenReturn(authorPath);
+        when(criteriaBuilder.like(eq((Path)authorPath), anyString())).thenReturn(mockPredicate);
+
+
+        Predicate result = (Predicate) method.invoke(null, filterMap, criteriaBuilder, entityClass, keyClass, root, parentPath, rootOperator, fields, criteriaQuery);
+        assertNotNull(result);
+    }
+
+    @Test
+    void testCreateLogicalOperatorTypedQuery() throws Exception {
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createLogicalOperatorTypedQuery", String.class, List.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        String operator = "or";
+        List<Map<String, Object>> value = new ArrayList<>();
+        Map<String, Object> filterMap = new HashMap<>();
+        Map<String, Object> equals = new LinkedHashMap<>();
+        equals.put("containsic", "Paulo");
+        filterMap.put("name", equals);
+        value.add(filterMap);
+        String parentPath = "";
+        List<String> fields = List.of("Author.name");
+        when(root.get("name")).thenReturn(authorPath);
+        when(criteriaBuilder.lower((Path)authorPath)).thenReturn(authorPath);
+        when(criteriaBuilder.like(eq((Path)authorPath), anyString())).thenReturn(mockPredicate);
+
+        Predicate result = (Predicate) method.invoke(null, operator, value, criteriaBuilder, entityClass, keyClass, root, parentPath, fields, criteriaQuery);
+        assertNotNull(result);
+    }
+
+    @Test
+    void testCreateUnaryOperatorTypedQuery() throws Exception {
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createUnaryOperatorTypedQuery", Map.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        Map<String, Object> filterMap = new HashMap<>();
+        Map<String, Object> equals = new LinkedHashMap<>();
+        equals.put("containsic", "Paulo");
+        filterMap.put("name", equals);
+        String parentPath = "";
+        List<String> fields = List.of("Author.name");
+        when(root.get("name")).thenReturn(authorPath);
+        when(criteriaBuilder.lower((Path)authorPath)).thenReturn(authorPath);
+        when(criteriaBuilder.like(eq((Path)authorPath), anyString())).thenReturn(mockPredicate);
+
+        Predicate result = (Predicate) method.invoke(null, filterMap, criteriaBuilder, entityClass, keyClass, root, parentPath, fields, criteriaQuery);
+        assertNotNull(result);
     }
 
     @Test
