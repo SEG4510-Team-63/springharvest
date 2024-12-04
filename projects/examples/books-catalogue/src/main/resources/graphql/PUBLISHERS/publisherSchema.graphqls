@@ -1,12 +1,21 @@
 extend type Query {
-    searchPublishers(filter: PublisherFilter = {}, operation: ClauseFilter = {}, paging: PageRequest = {page: 0, size: 20, sortOrders: "name", sortDirection: "D"}): [Publisher!]
-    countPublishers(filter : PublisherFilter = {}, operation: ClauseFilter = {}, fields: [String] = []) : String
+    searchPublishers(filter: PublisherFilter = {}, clause: ClauseFilter = {}, paging: PageRequest = {page: 0, size: 20, sortOrders: []}): PublisherPageData
+    countPublishers(filter : PublisherFilter = {}, clause: ClauseFilter = {}, fields: PublisherField) : Long
 }
 
 type Publisher implements BaseEntity{
     id: ID!
     name: String!
     traceData: TraceData
+}
+
+type PublisherPageData implements PageData{
+    currentPage : Int
+    pageSize : Int
+    total : Long
+    totalPages : Int
+    currentPageCount : Int
+    data : [Publisher!]
 }
 
 input PublisherFilter{
@@ -17,4 +26,16 @@ input PublisherFilter{
     and: [PublisherFilter!]
     or: [PublisherFilter!]
     not: PublisherFilter
+}
+
+# the PublisherField enum type is used to select the fields to be returned in the response or on which the query should be based on
+# Would be nice to be able to generate this from the model
+enum PublisherField
+{
+    Publisher_id
+    Publisher_name
+    Publisher_traceData_traceDates_dateCreated
+    Publisher_traceData_traceDates_dateUpdated
+    Publisher_traceData_traceUsers_createdBy
+    Publisher_traceData_traceUsers_updatedBy
 }

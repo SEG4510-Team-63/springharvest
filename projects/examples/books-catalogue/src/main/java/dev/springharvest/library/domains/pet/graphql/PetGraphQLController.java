@@ -1,11 +1,9 @@
 package dev.springharvest.library.domains.pet.graphql;
 
 import dev.springharvest.crud.domains.base.graphql.AbstractGraphQLCrudController;
-import dev.springharvest.library.domains.pet.models.dtos.PetDTO;
 import dev.springharvest.library.domains.pet.models.entities.PetEntity;
-import dev.springharvest.library.domains.pet.service.PetQueryCrudService;
 import dev.springharvest.shared.constants.DataPaging;
-import dev.springharvest.shared.domains.base.mappers.IBaseModelMapper;
+import dev.springharvest.shared.constants.PageData;
 import graphql.schema.DataFetchingEnvironment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,20 +17,19 @@ import java.util.UUID;
 
 @Slf4j
 @Controller
-public class PetGraphQLController extends AbstractGraphQLCrudController<PetDTO, PetEntity, UUID> {
+public class PetGraphQLController extends AbstractGraphQLCrudController<PetEntity, UUID> {
 
-    @Autowired
-    public  PetGraphQLController(IBaseModelMapper<PetDTO, PetEntity, UUID> modelMapper, PetQueryCrudService baseService){
-        super(modelMapper, baseService, PetEntity.class);
+    public  PetGraphQLController(){
+        super(PetEntity.class, UUID.class);
     }
 
     @QueryMapping
-    public List<PetDTO> searchPets(@Argument Map<String, Object> filter, @Argument Map<String, Object> operation, @Argument DataPaging paging, DataFetchingEnvironment environment) {
-        return paging != null ? search(filter, operation, paging, environment) : search(filter, operation, environment);
+    public PageData<PetEntity> searchPets(@Argument Map<String, Object> filter, @Argument Map<String, Object> clause, @Argument DataPaging paging, DataFetchingEnvironment environment) {
+        return search(filter, clause, paging, environment);
     }
 
     @QueryMapping
-    public String countPets(@Argument Map<String, Object> filter, @Argument Map<String, Object> operation, @Argument List<String> fields) {
-        return count(filter, operation, fields);
+    public long countPets(@Argument Map<String, Object> filter, @Argument Map<String, Object> clause, @Argument List<String> fields) {
+        return count(filter, clause, fields);
     }
 }
