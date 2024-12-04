@@ -1,7 +1,5 @@
 package dev.springharvest.crud.domains.base.graphql;
 
-import dev.springharvest.crud.domains.base.services.AbstractCrudService;
-import dev.springharvest.crud.domains.base.services.AbstractQueryCrudService;
 import dev.springharvest.expressions.helpers.Operation;
 import dev.springharvest.shared.constants.Aggregates;
 import dev.springharvest.shared.constants.DataPaging;
@@ -9,6 +7,7 @@ import dev.springharvest.shared.constants.PageData;
 import dev.springharvest.shared.domains.base.models.dtos.BaseDTO;
 import dev.springharvest.shared.domains.base.models.entities.BaseEntity;
 import graphql.schema.DataFetchingEnvironment;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
 import dev.springharvest.expressions.builders.TypedQueryBuilder;
 import jakarta.persistence.criteria.JoinType;
@@ -24,7 +23,6 @@ import java.util.*;
  * @param <K> The type of the primary key field, which extends Serializable
  *
  * @see IGraphQLCrudController
- * @see AbstractCrudService
  * @see BaseDTO
  * @see BaseEntity
  * @see TypedQueryBuilder
@@ -33,11 +31,6 @@ import java.util.*;
  */
 public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Serializable>
         implements IGraphQLCrudController<E, K> {
-
-    /**
-     * Service to handle CRUD operations with specifications.
-     */
-    protected AbstractQueryCrudService<E, K> crudService;
 
     /**
      * The class type of the entity.
@@ -57,18 +50,16 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
     /**
      * The TypedQueryBuilder to parse filter expressions.
      */
+    @Setter
     @Autowired
     private TypedQueryBuilder typedQueryBuilder;
 
     /**
      * Constructs an AbstractGraphQLCrudController with the specified mapper, service, and entity class.
      *
-     * @param crudService the service to handle CRUD operations
      * @param entityClass the class type of the entity
      */
-    protected AbstractGraphQLCrudController(AbstractQueryCrudService<E, K> crudService,
-                                            Class<E> entityClass, Class<K> keyClass) {
-        this.crudService = crudService;
+    protected AbstractGraphQLCrudController(Class<E> entityClass, Class<K> keyClass) {
         this.entityClass = entityClass;
         this.keyClass = keyClass;
         this.joins = new HashMap<>();
@@ -78,36 +69,10 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
     @Override
     public PageData<E> search(Map<String, Object> filter, Map<String, Object> clause, DataPaging paging, DataFetchingEnvironment environment) {
         try {
-            List<String> fields = new ArrayList<>();
-            environment.getSelectionSet().getFields().forEach(x -> {
-                fields.add(x.getFullyQualifiedName());
-                if (x.getArguments() != null && !x.getArguments().isEmpty()) {
-                    x.getArguments().forEach((y, z) -> {
-                        if (y.contains("join"))
-                            joins.put(x.getFullyQualifiedName(), JoinType.valueOf(z.toString()));
-                    });
-                }
-            });
+            List<String> fields = extractFieldsFromEnvironment(environment);
+            processJoins();
 
-            if (joins != null && !joins.isEmpty()) {
-                Map<String, JoinType> updatedJoins = new LinkedHashMap<>();
-                List<String> argumentNames = new ArrayList<>(joins.keySet());
-                argumentNames = getFormattedFields(argumentNames);
-                Iterator<String> keyIterator = joins.keySet().iterator();
-                Iterator<String> argumentIterator = argumentNames.iterator();
-
-                while (keyIterator.hasNext() && argumentIterator.hasNext()) {
-                    String oldKey = keyIterator.next();
-                    String newKey = argumentIterator.next();
-                    updatedJoins.put(newKey, joins.get(oldKey));
-                }
-
-                joins.clear();
-                joins.putAll(updatedJoins);
-            }
-
-            PageData <E> p = (PageData<E>) typedQueryBuilder.parseFilterExpression(Operation.SEARCH, entityClass, keyClass, filter, clause, getFormattedFields(fields), joins, null, paging);
-            return p;
+            return (PageData<E>) typedQueryBuilder.parseFilterExpression(Operation.SEARCH, entityClass, keyClass, filter, clause, getFormattedFields(fields), joins, null, paging);
         }
         finally {
             if (joins != null && !joins.isEmpty()) {
@@ -119,7 +84,8 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
     @Override
     public Object search(Map<String, Object> filter, Map<String, Object> clause, List<String> fields, Aggregates aggregatesFilter, DataPaging paging) {
         List<String> formattedFields = fields != null ? getFormattedFields(fields) : null;
-        return typedQueryBuilder.parseFilterExpression(Operation.SEARCH, entityClass, keyClass, filter, clause, formattedFields, null, getFormattedAggregates(aggregatesFilter, formattedFields), paging);
+        Aggregates aggregates = getFormattedAggregates(aggregatesFilter, formattedFields);
+        return typedQueryBuilder.parseFilterExpression(Operation.SEARCH, entityClass, keyClass, filter, clause, formattedFields, null, aggregates, paging);
     }
 
     @Override
@@ -127,7 +93,21 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
         return (long) typedQueryBuilder.parseFilterExpression(Operation.COUNT, entityClass, keyClass, filter, clause, getFormattedFields(fields), null, null, null);
     }
 
-    private static Aggregates getFormattedAggregates(Aggregates aggregates, List<String> fields) {
+    /**
+     * Formats the provided aggregates and fields.
+     * <p>
+     * This method formats the aggregates by converting their fields to a standardized format.
+     * If the fields are not specified, it ensures that the fields not in the aggregates are included in the groupBy list.
+     * Expects the fields in the aggregates list to be in the format "field1.field2.field3" or "field1_field2_field3" and the fields list to be in the format "field1.field_x", "field2.field_z", "field3.field_y".
+     *
+     * @param aggregates The aggregates to be formatted.
+     * @param fields The list of fields to be included in the groupBy list if not already present.
+     * @return A new Aggregates object with formatted fields, or null if the input aggregates are null.
+     */
+    static Aggregates getFormattedAggregates(Aggregates aggregates, List<String> fields) {
+        if (aggregates == null) {
+            return null;
+        }
         List<String> count = aggregates.count() != null && !aggregates.count().isEmpty() ? getFormattedFields(aggregates.count()) : null;
         List<String> sum = aggregates.sum() != null && !aggregates.sum().isEmpty() ? getFormattedFields(aggregates.sum()) : null;
         List<String> avg = aggregates.avg() != null && !aggregates.avg().isEmpty() ? getFormattedFields(aggregates.avg()) : null;
@@ -157,7 +137,18 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
         return new Aggregates(count, sum, avg, min, max, groupBy);
     }
 
-    private static List<String> getFormattedFields(List<String> fields) {
+    /**
+     * Formats the provided list of fields.
+     * <p>
+     * This method processes each field in the provided list and converts it to a standardized format.
+     * It handles fields containing ".data/", "/", or "_" by splitting and reformatting them.
+     * "/" come from the DataFetchingEnvironment, "_" come from custom fields in the GraphQL query.
+     * Fields related to pagination (e.g., "currentPage", "pageSize") are handled separately.
+     *
+     * @param fields The list of fields to be formatted.
+     * @return A list of formatted fields.
+     */
+    static List<String> getFormattedFields(List<String> fields) {
         List<String> formattedFields = new ArrayList<>();
 
         fields.forEach(x -> {
@@ -193,15 +184,90 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
                     }
                 }
             } else {
-                if (!x.contains("currentPage") && !x.contains("pageSize") && !x.contains("totalPages") && !x.contains("currentPageCount") && !x.contains("total"))
+                if (!x.contains("currentPage") && !x.contains("pageSize") && !x.contains("totalPages") && !x.contains("currentPageCount") && !x.contains("total")){
                     if (!(x.split("\\.").length == 2 && x.split("\\.")[1].equals("data"))) {
                         if (!formattedFields.contains(x)) {
                             formattedFields.add(x); // This case should normally not happen
                         }
                     }
+                }
+                else
+                {
+                    if (x.contains("currentPage")) {
+                        String [] parts = x.split("\\.");
+                        if (parts.length == 2 && parts[1].equals("currentPage"))
+                            formattedFields.add("currentPage");
+                    }
+                    if (x.contains("pageSize"))
+                        formattedFields.add("pageSize");
+                    if (x.contains("totalPages"))
+                        formattedFields.add("totalPages");
+                    if (x.contains("currentPageCount"))
+                        formattedFields.add("currentPageCount");
+                    if (x.contains("total")) {
+                        String [] parts = x.split("\\.");
+                        if (parts.length == 2 && parts[1].equals("total"))
+                            formattedFields.add("total");
+                    }
+                }
             }
         });
 
         return formattedFields;
+    }
+
+    /**
+     * Extracts the list of fields from the DataFetchingEnvironment.
+     * <p>
+     * This method retrieves the fields from the provided DataFetchingEnvironment and returns them as a list of strings.
+     * It also processes any join arguments and adds them to the joins map.
+     *
+     * @param environment The DataFetchingEnvironment containing the selection set.
+     * @return A list of field names extracted from the environment, or null if the environment or its selection set is null.
+     */
+    private List<String> extractFieldsFromEnvironment(DataFetchingEnvironment environment) {
+        if (environment == null || environment.getSelectionSet() == null || environment.getSelectionSet().getFields() == null) {
+            return null;
+        }
+        if ( environment.getSelectionSet().getFields().isEmpty() ) {
+            return new ArrayList<>();
+        }
+        List<String> fields = new ArrayList<>();
+        environment.getSelectionSet().getFields().forEach(x -> {
+            fields.add(x.getFullyQualifiedName());
+            if (x.getArguments() != null && !x.getArguments().isEmpty()) {
+                x.getArguments().forEach((y, z) -> {
+                    if (y.contains("join"))
+                        joins.put(x.getFullyQualifiedName(), JoinType.valueOf(z.toString()));
+                });
+            }
+        });
+        return fields;
+    }
+
+    /**
+     * Processes the joins by formatting the join keys.
+     * <p>
+     * This method updates the `joins` map by formatting the keys using the `getFormattedFields` method.
+     * It creates a new map with the formatted keys and the corresponding join types, then replaces the original `joins` map with the updated one.
+     */
+    void processJoins() {
+        if (joins == null || joins.isEmpty()) {
+            return;
+        }
+
+        Map<String, JoinType> updatedJoins = new LinkedHashMap<>();
+        List<String> formattedFields = getFormattedFields(new ArrayList<>(joins.keySet()));
+        Iterator<String> keyIterator = joins.keySet().iterator();
+        Iterator<String> formattedFieldIterator = formattedFields.iterator();
+
+        while (keyIterator.hasNext() && formattedFieldIterator.hasNext()) {
+            String oldKey = keyIterator.next();
+            String newKey = formattedFieldIterator.next();
+            updatedJoins.put(newKey, joins.get(oldKey));
+        }
+
+        joins.clear();
+        joins.putAll(updatedJoins);
     }
 }
