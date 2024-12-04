@@ -351,6 +351,10 @@ public class TypedQueryBuilder {
     private static <T, K> Predicate createTypedQuery(Map<String, Object> filterMap, CriteriaBuilder builder, Class<T> rootClass, Class<K> keyClass, Root<T> root, String parentPath, String rootOperator, List<String> fields, CriteriaQuery<?> query) {
         List<Predicate> predicates = new ArrayList<>();
 
+        if (filterMap == null || filterMap.isEmpty()) {
+            return builder.conjunction();
+        }
+
         for (Map.Entry<String, Object> entry : filterMap.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
