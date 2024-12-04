@@ -156,7 +156,7 @@ public class IDomainModelFactoryTest {
         domainModelFactory.softlyAssert(softly, (DomainModel) null, (DomainModel) null);
         softly.assertAll();
     }
-    
+
     @Test
     void softlyAssertWithNonTraceableDTOs() {
         SoftAssertions softly = new SoftAssertions();

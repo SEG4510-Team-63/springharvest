@@ -354,6 +354,108 @@ class TypedQueryBuilderTest {
     }
 
     @Test
+    void createTypedQuery_withValidSimpleField_returnsPredicate() throws Exception {
+        Map<String, Object> filterMap = Map.of("name", "Paulo");
+        CriteriaBuilder builder = mock(CriteriaBuilder.class);
+        Root<Author> root = mock(Root.class);
+        Path<Object> path = mock(Path.class);
+        Predicate predicate = mock(Predicate.class);
+
+        when(root.get("name")).thenReturn(path);
+        when(builder.equal(path, "Paulo")).thenReturn(predicate);
+
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createTypedQuery", Map.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        Predicate result = (Predicate) method.invoke(null, filterMap, builder, Author.class, UUID.class, root, "", "and", List.of("Author.name"), mock(CriteriaQuery.class));
+
+        assertNotNull(result);
+        assertEquals(predicate, result);
+    }
+
+    @Test
+    void createTypedQuery_withLogicalOperator_returnsCombinedPredicate() throws Exception {
+        Map<String, Object> filterMap = Map.of("or", List.of(Map.of("name", "Paulo"), Map.of("name", "John")));
+        CriteriaBuilder builder = mock(CriteriaBuilder.class);
+        Root<Author> root = mock(Root.class);
+        Path<Object> path = mock(Path.class);
+        Predicate predicate1 = mock(Predicate.class);
+        Predicate predicate2 = mock(Predicate.class);
+        Predicate combinedPredicate = mock(Predicate.class);
+
+        when(root.get("name")).thenReturn(path);
+        when(builder.equal(path, "Paulo")).thenReturn(predicate1);
+        when(builder.equal(path, "John")).thenReturn(predicate2);
+        when(builder.or(predicate1, predicate2)).thenReturn(combinedPredicate);
+
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createTypedQuery", Map.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        Predicate result = (Predicate) method.invoke(null, filterMap, builder, Author.class, UUID.class, root, "", "or", List.of("Author.name"), mock(CriteriaQuery.class));
+
+        assertNotNull(result);
+        assertEquals(combinedPredicate, result);
+    }
+
+    @Test
+    void createTypedQuery_withComplexField_returnsNestedPredicate() throws Exception {
+        Map<String, Object> filterMap = Map.of("pet", Map.of("name", "Jiji"));
+        CriteriaBuilder builder = mock(CriteriaBuilder.class);
+        Root<Author> root = mock(Root.class);
+        Path<Object> petPath = mock(Path.class);
+        Path<Object> petNamePath = mock(Path.class);
+        Predicate predicate = mock(Predicate.class);
+
+        when(root.get("pet")).thenReturn(petPath);
+        when(petPath.get("name")).thenReturn(petNamePath);
+        when(builder.equal(petNamePath, "Jiji")).thenReturn(predicate);
+
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createTypedQuery", Map.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        Predicate result = (Predicate) method.invoke(null, filterMap, builder, Author.class, UUID.class, root, "", "and", List.of("Author.pet.name"), mock(CriteriaQuery.class));
+
+        assertNotNull(result);
+        assertEquals(predicate, result);
+    }
+
+    @Test
+    void createTypedQuery_withEmptyFilterMap_returnsTruePredicate() throws Exception {
+        Map<String, Object> filterMap = new HashMap<>();
+        Predicate truePredicate = mock(Predicate.class);
+
+        when(root.get("name")).thenReturn(authorPath);
+        when(criteriaBuilder.lower((Path)authorPath)).thenReturn(authorPath);
+        when(criteriaBuilder.like(eq((Path)authorPath), anyString())).thenReturn(mockPredicate);
+        when(criteriaBuilder.conjunction()).thenReturn(truePredicate);
+
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createTypedQuery", Map.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        Predicate result = (Predicate) method.invoke(null, filterMap, criteriaBuilder, entityClass, keyClass, root, "", "and", List.of("Author.name"), criteriaQuery);
+
+        assertNotNull(result);
+        assertEquals(truePredicate, result);
+    }
+
+    @Test
+    void createTypedQuery_withNullFilterMap_returnsTruePredicate() throws Exception {
+        CriteriaBuilder builder = mock(CriteriaBuilder.class);
+        Root<Author> root = mock(Root.class);
+        Predicate truePredicate = mock(Predicate.class);
+
+        when(builder.conjunction()).thenReturn(truePredicate);
+
+        Method method = TypedQueryBuilder.class.getDeclaredMethod("createTypedQuery", Map.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, String.class, List.class, CriteriaQuery.class);
+        method.setAccessible(true);
+
+        Predicate result = (Predicate) method.invoke(null, null, builder, Author.class, UUID.class, root, "", "and", List.of("Author.name"), mock(CriteriaQuery.class));
+
+        assertNotNull(result);
+        assertEquals(truePredicate, result);
+    }
+
+    @Test
     void testCreateLogicalOperatorTypedQuery() throws Exception {
         Method method = TypedQueryBuilder.class.getDeclaredMethod("createLogicalOperatorTypedQuery", String.class, List.class, CriteriaBuilder.class, Class.class, Class.class, Root.class, String.class, List.class, CriteriaQuery.class);
         method.setAccessible(true);
