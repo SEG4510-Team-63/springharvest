@@ -34,6 +34,7 @@ public interface IGraphQLCrudController<E extends BaseEntity<K>, K extends Seria
 
     /**
      * Performs a search query on the entity based on the provided filter and paging information.
+     * The fields to fetch are extracted from the DataFetchingEnvironment.
      *
      * @throws NoSuchFieldException if the fields do not exist
      * @param filter the filter criteria as a map of field names to values
@@ -69,8 +70,8 @@ public interface IGraphQLCrudController<E extends BaseEntity<K>, K extends Seria
      *
      * @param filter @description the filter criteria as a map of field names to values
      * @param clause @description the type of clause to be performed on the query
-     * @param fields @description the fields to select
-     * @param aggregatesFilter @description the filter criteria for the aggregates
+     * @param fields @description the fields to select. The expected format is data_typeName or data_data2_fieldName...
+     * @param aggregatesFilter @description the filter criteria for the aggregates. The expected format for the aggregates lists values is fieldName or data_data2_fieldName...
      * @param paging @description the paging information
      * @return an object (JSON format) containing the search results
      * @throws NoSuchFieldException if the fields do not exist
@@ -102,7 +103,7 @@ public interface IGraphQLCrudController<E extends BaseEntity<K>, K extends Seria
      *
      * @param filter @description the filter criteria as a map of field names to values
      * @param clause @description the type of clause to be performed on the query
-     * @param fields @description the fields to apply the distinct clause on
+     * @param fields @description the fields to apply the distinct clause on. The expected format is data_typeName or data_data2_fieldName...
      * @return the count of entities corresponding to the filter criteria
      * @throws NoSuchFieldException if the fields do not exist
      */
