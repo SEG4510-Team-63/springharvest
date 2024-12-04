@@ -225,7 +225,7 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
      * @param environment The DataFetchingEnvironment containing the selection set.
      * @return A list of field names extracted from the environment, or null if the environment or its selection set is null.
      */
-    private List<String> extractFieldsFromEnvironment(DataFetchingEnvironment environment) {
+    List<String> extractFieldsFromEnvironment(DataFetchingEnvironment environment) {
         if (environment == null || environment.getSelectionSet() == null || environment.getSelectionSet().getFields() == null) {
             return null;
         }

@@ -2,6 +2,7 @@ package dev.springharvest.crud.domains.base.graphql;
 
 import dev.springharvest.shared.constants.*;
 import graphql.schema.DataFetchingFieldSelectionSet;
+import graphql.schema.SelectedField;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.criteria.JoinType;
 import org.jetbrains.annotations.NotNull;
@@ -358,11 +359,6 @@ public class AbstractGraphQLCrudControllerTest {
         assertEquals(expected, result);
     }
 
-
-
-
-
-
     @Test
     void processJoinsWithValidJoins() {
         abstractGraphQLCrudController.joins.put("author_pet", JoinType.LEFT);
@@ -401,5 +397,60 @@ public class AbstractGraphQLCrudControllerTest {
 
         assertEquals(JoinType.LEFT, abstractGraphQLCrudController.joins.get("author.pet"));
         assertEquals(JoinType.RIGHT, abstractGraphQLCrudController.joins.get("author.books"));
+    }
+
+    @Test
+    void extractFieldsFromEnvironmentWithValidEnvironment() {
+        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
+        DataFetchingFieldSelectionSet selectionSet = mock(DataFetchingFieldSelectionSet.class);
+        SelectedField field = mock(SelectedField.class);
+        when(environment.getSelectionSet()).thenReturn(selectionSet);
+        when(selectionSet.getFields()).thenReturn(List.of(field));
+        when(field.getFullyQualifiedName()).thenReturn("author.name");
+        when(field.getArguments()).thenReturn(Map.of());
+
+        List<String> result = abstractGraphQLCrudController.extractFieldsFromEnvironment(environment);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("author.name", result.get(0));
+    }
+
+    @Test
+    void extractFieldsFromEnvironmentWithNullEnvironment() {
+        List<String> result = abstractGraphQLCrudController.extractFieldsFromEnvironment(null);
+
+        assertNull(result);
+    }
+
+    @Test
+    void extractFieldsFromEnvironmentWithEmptySelectionSet() {
+        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
+        DataFetchingFieldSelectionSet selectionSet = mock(DataFetchingFieldSelectionSet.class);
+        when(environment.getSelectionSet()).thenReturn(selectionSet);
+        when(selectionSet.getFields()).thenReturn(Collections.emptyList());
+
+        List<String> result = abstractGraphQLCrudController.extractFieldsFromEnvironment(environment);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void extractFieldsFromEnvironmentWithJoinArguments() {
+        DataFetchingEnvironment environment = mock(DataFetchingEnvironment.class);
+        DataFetchingFieldSelectionSet selectionSet = mock(DataFetchingFieldSelectionSet.class);
+        SelectedField field = mock(SelectedField.class);
+        when(environment.getSelectionSet()).thenReturn(selectionSet);
+        when(selectionSet.getFields()).thenReturn(List.of(field));
+        when(field.getFullyQualifiedName()).thenReturn("author.pet");
+        when(field.getArguments()).thenReturn(Map.of("join", "LEFT"));
+
+        List<String> result = abstractGraphQLCrudController.extractFieldsFromEnvironment(environment);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("author.pet", result.get(0));
+        assertEquals(JoinType.LEFT, abstractGraphQLCrudController.joins.get("author.pet"));
     }
 }
