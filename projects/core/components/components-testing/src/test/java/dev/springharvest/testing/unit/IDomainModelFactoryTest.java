@@ -3,7 +3,10 @@ package dev.springharvest.testing.unit;
 import dev.springharvest.shared.domains.DomainModel;
 import dev.springharvest.testing.domains.integration.shared.domains.base.factories.IDomainModelFactory;
 import org.assertj.core.api.SoftAssertions;
+import org.assertj.core.error.AssertJMultipleFailuresError;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.Assert.assertThrows;
 
 public class IDomainModelFactoryTest {
 
@@ -72,8 +75,11 @@ public class IDomainModelFactoryTest {
     @Test
     void shouldAssertDifferentStrings() {
         SoftAssertions softly = new SoftAssertions();
-        domainModelFactory.softlyAssert(softly, "testString", "anotherString");
-        softly.assertAll(); // Should fail as the strings are different
+
+        assertThrows(AssertJMultipleFailuresError.class, () -> {
+            domainModelFactory.softlyAssert(softly, "testString", "anotherString");
+            softly.assertAll(); // Should throw an exception due to assertion failure
+        });
     }
 
     @Test
@@ -107,9 +113,10 @@ public class IDomainModelFactoryTest {
     @Test
     void shouldAssertDifferentNonStringObjects() {
         SoftAssertions softly = new SoftAssertions();
-        domainModelFactory.softlyAssert(softly, 123, 456);
-        softly.assertAll(); // Should fail as the integers are different
+
+        assertThrows(AssertJMultipleFailuresError.class, () -> {
+            domainModelFactory.softlyAssert(softly, 123, 456); // Different integers
+            softly.assertAll(); // Should throw an exception due to assertion failure
+        });
     }
-
-
 }
