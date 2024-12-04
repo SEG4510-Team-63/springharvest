@@ -200,18 +200,20 @@ public class TypedQueryBuilder {
                 }
                 TypedQuery<Tuple> query = entityManager.createQuery(criteriaQuery);
                 int totalPages = -1;
-                if (pagingElementsToInclude.contains("total") || pagingElementsToInclude.contains("totalPages"))
+                if (pagingElementsToInclude.contains("total") || pagingElementsToInclude.contains("totalPages") || (aggregates != null && pagingElementsToInclude.isEmpty()))
+                    //Seems to add +1 to the real total count
+                    //Might need fixing
                     total = handleCountOperation(criteriaBuilder, criteriaQuery, entityManager, filterMap, rootClass, keyClass, fields, joins, rootOperator, distinct, root, true, aggregates);
                 if (paging != null) {
                     query.setFirstResult((paging.page() - 1) * paging.size());
                     query.setMaxResults(paging.size());
-                    if (pagingElementsToInclude.contains("totalPages"))
+                    if (pagingElementsToInclude.contains("totalPages") || (aggregates != null && pagingElementsToInclude.isEmpty()))
                         totalPages = (int) Math.ceil((double) total / paging.size());
                 }
                 //Need the mapper here
                 List<Tuple> resultsList = query.getResultList();
                 int currentPageCount = -1;
-                if (pagingElementsToInclude.contains("currentPageCount"))
+                if (pagingElementsToInclude.contains("currentPageCount") || (aggregates != null && pagingElementsToInclude.isEmpty()))
                     currentPageCount = resultsList.size();
                 GenericEntityMapper<T> mapper = new GenericEntityMapper<>();
                 if (aggregates == null) // If no aggregates are specified, return a list of entities
@@ -227,6 +229,7 @@ public class TypedQueryBuilder {
                 List<Map<String, Object>> dataMap = mapper.mapTuplesToMap(resultsList);
                 Map<String, Object> pagingMap = new HashMap<>();
                 Map<String, Object> subPagingMap = new HashMap<>();
+                assert paging != null;
                 subPagingMap.put("page", paging.page());
                 subPagingMap.put("size", paging.size());
                 subPagingMap.put("currentPageCount", currentPageCount);
@@ -266,7 +269,7 @@ public class TypedQueryBuilder {
         CriteriaQuery<Long> countQuery = criteriaBuilder.createQuery(Long.class);
         Root<?> countRoot = countQuery.from(root.getJavaType());
 
-        if (isSubQuery && aggregates == null)
+        if (isSubQuery)
         {
             List<Selection<?>> selections = new ArrayList<>();
             Subquery<Tuple> subquery = countQuery.subquery(Tuple.class);

@@ -420,7 +420,7 @@ public class AbstractGraphQLCrudControllerTest {
     void extractFieldsFromEnvironmentWithNullEnvironment() {
         List<String> result = abstractGraphQLCrudController.extractFieldsFromEnvironment(null);
 
-        assertNull(result);
+        assertEquals(List.of(), result);
     }
 
     @Test

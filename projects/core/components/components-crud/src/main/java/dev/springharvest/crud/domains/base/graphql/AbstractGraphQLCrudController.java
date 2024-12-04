@@ -14,6 +14,8 @@ import jakarta.persistence.criteria.JoinType;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * A generic implementation of the IGraphQLCrudController interface.
@@ -108,29 +110,36 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
         if (aggregates == null) {
             return null;
         }
-        List<String> count = aggregates.count() != null && !aggregates.count().isEmpty() ? getFormattedFields(aggregates.count()) : null;
-        List<String> sum = aggregates.sum() != null && !aggregates.sum().isEmpty() ? getFormattedFields(aggregates.sum()) : null;
-        List<String> avg = aggregates.avg() != null && !aggregates.avg().isEmpty() ? getFormattedFields(aggregates.avg()) : null;
-        List<String> min = aggregates.min() != null && !aggregates.min().isEmpty() ? getFormattedFields(aggregates.min()) : null;
-        List<String> max = aggregates.max() != null && !aggregates.max().isEmpty() ? getFormattedFields(aggregates.max()) : null;
-        List<String> groupBy = aggregates.groupBy() != null && !aggregates.groupBy().isEmpty() ? getFormattedFields(aggregates.groupBy()) : null;
 
-        //We do this because if the fields are not specified, we have to use the fields that are not in the aggregates inside the groupBy (SQL rule)
+        // Helper method to get formatted fields or null
+        Function<List<String>, List<String>> formatFields = list ->
+                (list != null && !list.isEmpty()) ? getFormattedFields(list) : null;
+
+        List<String> count = formatFields.apply(aggregates.count());
+        List<String> sum = formatFields.apply(aggregates.sum());
+        List<String> avg = formatFields.apply(aggregates.avg());
+        List<String> min = formatFields.apply(aggregates.min());
+        List<String> max = formatFields.apply(aggregates.max());
+        List<String> groupBy = formatFields.apply(aggregates.groupBy());
+
+        // If fields are specified, ensure groupBy includes missing fields
         if (fields != null && !fields.isEmpty()) {
-            List<String> allFields = new ArrayList<>();
-            if (count != null) allFields.addAll(count);
-            if (sum != null) allFields.addAll(sum);
-            if (avg != null) allFields.addAll(avg);
-            if (min != null) allFields.addAll(min);
-            if (max != null) allFields.addAll(max);
+            List<String> allFields = Stream.of(count, sum, avg, min, max)
+                    .filter(Objects::nonNull)
+                    .flatMap(List::stream)
+                    .toList();
 
-            for (String field : fields) {
-                if (!allFields.isEmpty() && (groupBy == null || !groupBy.contains(field))) {
-                    if (groupBy == null) {
-                        groupBy = new ArrayList<>();
-                    }
-                    groupBy.add(field);
-                }
+            if (groupBy == null) {
+                groupBy = new ArrayList<>();
+            }
+
+            List<String> finalGroupBy = groupBy;
+            fields.stream()
+                    .filter(field -> !allFields.isEmpty() && !finalGroupBy.contains(field))
+                    .forEach(groupBy::add);
+
+            if (groupBy.isEmpty()) {
+                groupBy = null;
             }
         }
 
@@ -151,70 +160,78 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
     static List<String> getFormattedFields(List<String> fields) {
         List<String> formattedFields = new ArrayList<>();
 
-        fields.forEach(x -> {
-            if (x.contains(".data/") || x.contains("/") || x.contains("_")) {
-                if (x.contains(".data/")) {
-                    String[] parts = x.split("\\.");
-                    x = x.replace(parts[0] + ".", "");
-                }
-                if (x.contains("/")) {
-                    String[] parts = x.split("/");
-                    StringBuilder newString = new StringBuilder(parts[0]);
+        for (String field : fields) {
+            if (field.contains(".data/")) {
+                field = field.substring(field.indexOf(".") + 1); // Remove the prefix before ".data/"
+            }
 
-                    for (int i = 1; i < parts.length; i++) {
-                        newString.append(".").append(parts[i].split("\\.")[1]);
-                    }
-
-                    String finalString = newString.toString();
-                    if (!formattedFields.contains(finalString)) {
-                        formattedFields.add(finalString);
-                    }
-                }
-                else if (x.contains("_")) {
-                    String[] parts = x.split("_");
-                    StringBuilder newString = new StringBuilder(parts[0]);
-
-                    for (int i = 1; i < parts.length; i++) {
-                        newString.append(".").append(parts[i]);
-                    }
-
-                    String finalString = newString.toString();
-                    if (!formattedFields.contains(finalString)) {
-                        formattedFields.add(finalString);
-                    }
-                }
+            if (field.contains("/")) {
+                formattedFields.add(formatNestedField(field, "/"));
+            } else if (field.contains("_")) {
+                formattedFields.add(formatNestedField(field, "_"));
             } else {
-                if (!x.contains("currentPage") && !x.contains("pageSize") && !x.contains("totalPages") && !x.contains("currentPageCount") && !x.contains("total")){
-                    if (!(x.split("\\.").length == 2 && x.split("\\.")[1].equals("data"))) {
-                        if (!formattedFields.contains(x)) {
-                            formattedFields.add(x); // This case should normally not happen
-                        }
-                    }
-                }
-                else
-                {
-                    if (x.contains("currentPage")) {
-                        String [] parts = x.split("\\.");
-                        if (parts.length == 2 && parts[1].equals("currentPage"))
-                            formattedFields.add("currentPage");
-                    }
-                    if (x.contains("pageSize"))
-                        formattedFields.add("pageSize");
-                    if (x.contains("totalPages"))
-                        formattedFields.add("totalPages");
-                    if (x.contains("currentPageCount"))
-                        formattedFields.add("currentPageCount");
-                    if (x.contains("total")) {
-                        String [] parts = x.split("\\.");
-                        if (parts.length == 2 && parts[1].equals("total"))
-                            formattedFields.add("total");
-                    }
+                // Handle special cases
+                if (!isExcludedField(field)) {
+                    formattedFields.add(field);
+                } else {
+                    addSpecialField(formattedFields, field);
                 }
             }
-        });
+        }
 
         return formattedFields;
     }
+
+    private static String formatNestedField(String field, String delimiter) {
+        String[] parts = field.split(delimiter);
+        StringBuilder formatted = new StringBuilder(parts[0]);
+
+        for (int i = 1; i < parts.length; i++) {
+            String[] subParts = parts[i].split("\\.");
+            formatted.append(".").append(subParts[subParts.length - 1]);
+        }
+
+        return formatted.toString();
+    }
+
+    private static boolean isExcludedField(String field) {
+        String[] excludedKeywords = {
+                "currentPage", "pageSize", "totalPages", "currentPageCount", "total"
+        };
+
+        for (String keyword : excludedKeywords) {
+            if (field.contains(keyword)) {
+                return true;
+            }
+        }
+
+        return field.split("\\.").length == 2 && field.endsWith(".data");
+    }
+
+    private static void addSpecialField(List<String> formattedFields, String field) {
+        if (field.contains("currentPage") && !formattedFields.contains("currentPage")) {
+            String[] parts = field.split("\\.");
+            if (parts.length == 2 && "currentPage".equals(parts[1]) && !formattedFields.contains("currentPage")) {
+                formattedFields.add("currentPage");
+            }
+        }
+        if (field.contains("pageSize") && !formattedFields.contains("pageSize")) {
+            formattedFields.add("pageSize");
+        }
+        if (field.contains("totalPages") && !formattedFields.contains("totalPages")) {
+            formattedFields.add("totalPages");
+        }
+        if (field.contains("currentPageCount") && !formattedFields.contains("currentPageCount")) {
+            formattedFields.add("currentPageCount");
+        }
+        if (field.contains("total")) {
+            String[] parts = field.split("\\.");
+            if (parts.length == 2 && "total".equals(parts[1]) && !formattedFields.contains("total")) {
+                formattedFields.add("total");
+            }
+        }
+    }
+
 
     /**
      * Extracts the list of fields from the DataFetchingEnvironment.
@@ -227,7 +244,7 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
      */
     List<String> extractFieldsFromEnvironment(DataFetchingEnvironment environment) {
         if (environment == null || environment.getSelectionSet() == null || environment.getSelectionSet().getFields() == null) {
-            return null;
+            return new ArrayList<>();
         }
         if ( environment.getSelectionSet().getFields().isEmpty() ) {
             return new ArrayList<>();
