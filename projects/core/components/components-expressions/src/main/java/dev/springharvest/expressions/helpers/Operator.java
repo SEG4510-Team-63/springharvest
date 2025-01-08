@@ -1,5 +1,6 @@
 package dev.springharvest.expressions.helpers;
 
+
 import lombok.Getter;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Getter;
  * @author sjaiswal
  * @author Gilles Djawa (NeroNemesis)
  */
+@Getter
 public enum Operator {
 
     /* Logical Operators */
@@ -80,7 +82,7 @@ public enum Operator {
      */
     public static Operator getOperator(String name) {
         for (Operator operator : Operator.values()) {
-            if (operator.getName().equals(name)) {
+            if (operator.getName().equals(name.toLowerCase())) {
                 return operator;
             }
         }

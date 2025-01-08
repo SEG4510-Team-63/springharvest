@@ -159,6 +159,9 @@ public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Se
      */
     static List<String> getFormattedFields(List<String> fields) {
         List<String> formattedFields = new ArrayList<>();
+        if (fields == null || fields.isEmpty()) {
+            return formattedFields;
+        }
 
         for (String field : fields) {
             if (field.contains(".data/")) {

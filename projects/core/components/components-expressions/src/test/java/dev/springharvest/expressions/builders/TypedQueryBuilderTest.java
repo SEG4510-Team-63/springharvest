@@ -70,7 +70,7 @@ class TypedQueryBuilderTest {
     private Path<Object> petNamePath;
 
     @Mock
-    Subquery<Tuple> subquery;
+    Subquery<Integer> subquery;
 
     @Mock
     private Root<?> subRoot;
@@ -117,7 +117,8 @@ class TypedQueryBuilderTest {
         when(criteriaBuilder.createQuery(Long.class)).thenReturn(countQuery);
         when(criteriaQuery.from(entityClass)).thenReturn(root);
         when(countQuery.from(root.getJavaType())).thenReturn((Root)countRoot);
-        when(countQuery.subquery(Tuple.class)).thenReturn(subquery);
+        //when(countQuery.subquery(Tuple.class)).thenReturn(subquery);
+        when(countQuery.subquery(Integer.class)).thenReturn(subquery);
         when(subquery.from(countRoot.getJavaType())).thenReturn((Root)subRoot);
         when(countQuery.select(any())).thenReturn(countQuery);
         when(countQuery.where(any(Expression.class))).thenReturn(countQuery);
@@ -701,5 +702,57 @@ class TypedQueryBuilderTest {
         assertEquals(expected, result);
         assertTrue(TypedQueryBuilder.pagingElementsToInclude.contains("currentPage"));
         assertTrue(TypedQueryBuilder.pagingElementsToInclude.contains("pageSize"));
+    }
+
+    @Test
+    void findPrimaryKeyField_withIdAnnotation_returnsFieldName() {
+        class TestEntity {
+            @Id
+            private String id;
+        }
+
+        String result = TypedQueryBuilder.findPrimaryKeyField(TestEntity.class);
+        assertEquals("id", result);
+    }
+
+    @Test
+    void findPrimaryKeyField_withAttributeOverride_returnsOverriddenName() {
+        @AttributeOverride(name = "id", column = @Column(name = "overriddenId"))
+        class TestEntity {
+            @Id
+            private String id;
+        }
+
+        String result = TypedQueryBuilder.findPrimaryKeyField(TestEntity.class);
+        assertEquals("overriddenId", result);
+    }
+
+    @Test
+    void findPrimaryKeyField_withSuperclassIdAnnotation_returnsFieldName() {
+        class SuperEntity {
+            @Id
+            private String id;
+        }
+
+        class SubEntity extends SuperEntity {}
+
+        String result = TypedQueryBuilder.findPrimaryKeyField(SubEntity.class);
+        assertEquals("id", result);
+    }
+
+    @Test
+    void findPrimaryKeyField_withNoIdAnnotation_returnsNull() {
+        class TestEntity {
+            private String id;
+        }
+
+        String result = TypedQueryBuilder.findPrimaryKeyField(TestEntity.class);
+        assertNull(result);
+    }
+
+    @Test
+    void findPrimaryKeyField_withNullClass_returnsNull() {
+        String result = TypedQueryBuilder.findPrimaryKeyField(null);
+        assertNull(result);
     }
 }

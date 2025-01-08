@@ -66,6 +66,9 @@ public class TypedQueryBuilder {
      */
     private static Map<String, Join<?, ?>> joinsMap;
 
+    /**
+     * A list of paging elements to include in the query result.
+     */
     public static List<String> pagingElementsToInclude = new ArrayList<>();
 
     /**
@@ -271,43 +274,53 @@ public class TypedQueryBuilder {
 
         if (isSubQuery)
         {
-            List<Selection<?>> selections = new ArrayList<>();
-            Subquery<Tuple> subquery = countQuery.subquery(Tuple.class);
+            Subquery<Integer> subquery = countQuery.subquery(Integer.class);
             Root<?> subRoot = subquery.from(countRoot.getJavaType());
             applyJoins(subRoot, joins);
-            List<Path<?>> groupByPaths = new ArrayList<>();
 
-            for (String field : fields) {
-                PathObject pathAndAlias = getPathFromField(subRoot, field);
-                Path<?> path = pathAndAlias.path();
-                selections.add(path);
-            }
             Predicate filterPredicate = filterMap != null ? createTypedQuery(filterMap, criteriaBuilder, rootClass, keyClass, (Root) subRoot, "", rootOperator, fields, criteriaQuery) : null;
+            String primaryKeyField = findPrimaryKeyField(rootClass);
+            if (primaryKeyField == null)
+                throw new RuntimeException("Primary key not found. Please make sure to add @Id annotation to the primary key field in your entity class.");
             if (filterPredicate != null) {
-                countQuery.where(filterPredicate);
+                subquery.where(
+                        criteriaBuilder.and(
+                                filterPredicate,
+                                criteriaBuilder.equal(subRoot.get(primaryKeyField), countRoot.get(primaryKeyField))
+                        )
+                );
             }
+            else {
+                subquery.where(criteriaBuilder.equal(subRoot.get(primaryKeyField), countRoot.get(primaryKeyField)));
+            }
+
             joinsMap.clear();
             if (aggregates != null) {
+                List<Selection<?>> selections = new ArrayList<>();
+                List<Path<?>> groupByPaths = new ArrayList<>();
+
+                for (String field : fields) {
+                    PathObject pathAndAlias = getPathFromField(subRoot, field);
+                    Path<?> path = pathAndAlias.path();
+                    selections.add(path);
+                }
                 addAggregateSelections(criteriaBuilder, subRoot, aggregates, selections);
                 addGroupByPaths(subRoot, aggregates, groupByPaths);
                 if (!groupByPaths.isEmpty()) {
                     subquery.groupBy(groupByPaths.toArray(new Path[0]));
                 }
             }
-            subquery.select((Expression<Tuple>) criteriaBuilder.tuple(selections.toArray(new Selection[0])));
-            subquery.where(filterPredicate);
+
+            subquery.select(criteriaBuilder.literal(1));
             countQuery.select(criteriaBuilder.count(subRoot)).where(criteriaBuilder.exists(subquery));
             countQuery.select(criteriaBuilder.count(countRoot));
-            return entityManager.createQuery(countQuery).getSingleResult();
         }
         else {
             /* PLEASE READ
-             * The following code is a workaround for the limitation of the Count and CountDistinct methods in CriteriaBuilder.
+             * The following code is for now the only stable way to implement Count and CountDistinct operations with CriteriaBuilder.
              * The Count and CountDistinct methods only support selecting 1 field.
-             * Counting multiple fields is supported through Concatenation in Postgres and MySQL but not in T-SQL. Not sure about H2.
+             * Counting multiple fields is supported through Concatenation in Postgres and MySQL but not in T-SQL. Not sure about H2 and Oracle.
              * So I think it is preferable to avoid using Concatenation for now.
-             * The workaround is to select the fields to be counted and then add the count to the result list.
-             * The count is then extracted from the result list.
              */
 
             Predicate filterPredicate = filterMap != null ? createTypedQuery(filterMap, criteriaBuilder, rootClass, keyClass, (Root) countRoot, "", rootOperator, fields, criteriaQuery) : null;
@@ -318,19 +331,18 @@ public class TypedQueryBuilder {
             if (distinct) {
                 if (fields == null || fields.isEmpty()) {
                     countQuery.select(criteriaBuilder.countDistinct(countRoot));
-                    return entityManager.createQuery(countQuery).getSingleResult();
                 } else {
                     countQuery.select(criteriaBuilder.countDistinct(getPathFromField(countRoot, fields.getFirst()).path()));
-                    return entityManager.createQuery(countQuery).getSingleResult();
                 }
             } else {
                 if (fields == null || fields.isEmpty())
                     countQuery.select(criteriaBuilder.count(countRoot));
                 else
                     countQuery.select(criteriaBuilder.count(getPathFromField(countRoot, fields.getFirst()).path()));
-                return entityManager.createQuery(countQuery).getSingleResult();
             }
         }
+
+        return entityManager.createQuery(countQuery).getSingleResult();
     }
 
     /**
@@ -624,32 +636,32 @@ public class TypedQueryBuilder {
         return new PathObject(currentPath, joinAlias.toString());
     }
 
-//    /**
-//     * Finds the primary key field of the specified entity class.
-//     *
-//     * @param entityClass The class of the entity for which the primary key field is to be found.
-//     * @return An Optional containing the name of the primary key field, or an empty Optional if no primary key field is found.
-//     */
-//    public static Optional<String> findPrimaryKeyField(Class<?> entityClass) {
-//        // Inspect superclass for @Id annotated field
-//        Class<?> currentClass = entityClass;
-//        while (currentClass != null) {
-//            for (Field field : currentClass.getDeclaredFields()) {
-//                if (field.isAnnotationPresent(Id.class)) {
-//                    // Check for AttributeOverride in subclass
-//                    AttributeOverride[] overrides = entityClass.getAnnotationsByType(AttributeOverride.class);
-//                    for (AttributeOverride override : overrides) {
-//                        if (override.name().equals(field.getName())) {
-//                            return Optional.of(override.column().name());
-//                        }
-//                    }
-//                    return Optional.of(field.getName());
-//                }
-//            }
-//            currentClass = currentClass.getSuperclass();
-//        }
-//        return Optional.empty();
-//    }
+    /**
+     * Finds the primary key field of the specified entity class.
+     *
+     * @param entityClass The class of the entity for which the primary key field is to be found.
+     * @return An Optional containing the name of the primary key field, or an empty Optional if no primary key field is found.
+     */
+     static String findPrimaryKeyField(Class<?> entityClass) {
+        // Inspect superclass for @Id annotated field
+        Class<?> currentClass = entityClass;
+        while (currentClass != null) {
+            for (Field field : currentClass.getDeclaredFields()) {
+                if (field.isAnnotationPresent(Id.class)) {
+                    // Check for AttributeOverride in subclass
+                    AttributeOverride[] overrides = entityClass.getAnnotationsByType(AttributeOverride.class);
+                    for (AttributeOverride override : overrides) {
+                        if (override.name().equals(field.getName())) {
+                            return override.column().name();
+                        }
+                    }
+                    return field.getName();
+                }
+            }
+            currentClass = currentClass.getSuperclass();
+        }
+        return null;
+    }
 
     /**
      * Creates a predicate based on the provided value and field type.
