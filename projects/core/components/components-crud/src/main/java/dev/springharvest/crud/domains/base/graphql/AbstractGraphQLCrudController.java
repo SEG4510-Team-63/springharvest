@@ -1,180 +1,293 @@
 package dev.springharvest.crud.domains.base.graphql;
 
-import dev.springharvest.crud.domains.base.services.AbstractCrudService;
-import dev.springharvest.crud.domains.base.services.AbstractQueryCrudService;
 import dev.springharvest.expressions.helpers.Operation;
-import dev.springharvest.expressions.builders.JpaSpecificationBuilder;
+import dev.springharvest.shared.constants.Aggregates;
 import dev.springharvest.shared.constants.DataPaging;
-import dev.springharvest.shared.domains.base.mappers.IBaseModelMapper;
+import dev.springharvest.shared.constants.PageData;
 import dev.springharvest.shared.domains.base.models.dtos.BaseDTO;
 import dev.springharvest.shared.domains.base.models.entities.BaseEntity;
 import graphql.schema.DataFetchingEnvironment;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import dev.springharvest.expressions.builders.TypedQueryBuilder;
+import jakarta.persistence.criteria.JoinType;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * A generic implementation of the IGraphQLCrudController interface.
  * This class provides CRUD operations for GraphQL endpoints using generics to handle different types of DTOs, entities, and primary key fields.
  *
- * @param <D> The DTO type, which extends BaseDTO<K>
  * @param <E> The entity type, which extends BaseEntity<K>
  * @param <K> The type of the primary key field, which extends Serializable
  *
  * @see IGraphQLCrudController
- * @see AbstractCrudService
  * @see BaseDTO
  * @see BaseEntity
+ * @see TypedQueryBuilder
  * @author Gilles Djawa (NeroNemesis)
  * @since 1.0
  */
-public class AbstractGraphQLCrudController<D extends BaseDTO<K>, E extends BaseEntity<K>, K extends Serializable>
-        implements IGraphQLCrudController<D, K> {
-
-    /**
-     * Mapper to convert between entities and DTOs.
-     */
-    protected IBaseModelMapper<D, E, K> modelMapper;
-
-    /**
-     * Service to handle CRUD operations with specifications.
-     */
-    protected AbstractSpecificationCrudService<E, K> crudService;
+public class AbstractGraphQLCrudController<E extends BaseEntity<K>, K extends Serializable>
+        implements IGraphQLCrudController<E, K> {
 
     /**
      * The class type of the entity.
      */
     protected Class<E> entityClass;
-    protected List<String> Fields;
+
+    /**
+     * The class type of the primary key field.
+     */
+    protected Class<K> keyClass;
+
+    /**
+     * The list of joins to be performed.
+     */
+    protected Map<String, JoinType> joins;
+
+    /**
+     * The TypedQueryBuilder to parse filter expressions.
+     */
+    @Setter
     @Autowired
-    private TypedQueryBuilder TypedQueryBuilder;
+    private TypedQueryBuilder typedQueryBuilder;
 
     /**
      * Constructs an AbstractGraphQLCrudController with the specified mapper, service, and entity class.
      *
-     * @param modelMapper the mapper to convert between entities and DTOs
-     * @param crudService the service to handle CRUD operations
      * @param entityClass the class type of the entity
      */
-    protected AbstractGraphQLCrudController(IBaseModelMapper<D, E, K> modelMapper,
-                                            AbstractQueryCrudService<E, K> crudService,
-                                            Class<E> entityClass) {
-        this.modelMapper = modelMapper;
-        this.crudService = crudService;
+    protected AbstractGraphQLCrudController(Class<E> entityClass, Class<K> keyClass) {
         this.entityClass = entityClass;
-        this.Fields = new ArrayList<>();
+        this.keyClass = keyClass;
+        this.joins = new HashMap<>();
     }
 
-    /**
-     * Searches for entities based on a filter and paging information, then converts the results to DTOs.
-     *
-     * @param filter the filter criteria as a map of field names to values
-     * @param paging the paging information
-     * @return a list of DTOs matching the filter criteria
-     */
+    @SuppressWarnings("unchecked")
     @Override
-    public List<D> search(Map<String, Object> filter, Map<String, Object> clause, DataPaging paging, DataFetchingEnvironment environment) {
-        var pageRequest = PageRequest.of(paging.page(), paging.size(), paging.sortDirection().name().equals("A") ? Sort.by(paging.sortOrders()).ascending() : Sort.by(paging.sortOrders()).descending());
+    public PageData<E> search(Map<String, Object> filter, Map<String, Object> clause, DataPaging paging, DataFetchingEnvironment environment) {
+        try {
+            List<String> fields = extractFieldsFromEnvironment(environment);
+            processJoins();
 
-//        if (filter.isEmpty()) {
-//            if (operation.isEmpty())
-//            {
-//                Page<E> page = crudService.findAll(pageRequest);
-//                Page<D> dtos = page.hasContent() ? modelMapper.pagedEntityToPagedDto(page) : Page.empty(pageRequest);
-//                return dtos.getContent();
-//            }
-//        }
-
-        environment.getSelectionSet().getFields().forEach(x -> Fields.add(x.getFullyQualifiedName()));
-//        System.out.println("Search 1");
-//        System.out.println(Fields);
-//
-//        System.out.println("-----------------------------------");
-        //System.out.println(getFormattedFields(Fields));
-        List<String> fields2 = Fields;
-        Specification<E> specification = JpaSpecificationBuilder.parseFilterExpression(filter, entityClass, getFormattedFields(Fields));
-        List<Object> things = TypedQueryBuilder.parseFilterExpression(filter, clause, entityClass, getFormattedFields(fields2), Operation.SEARCH);
-        System.out.println("things : " + things);
-        System.out.println("things length : " + things.size());
-
-        for (Object result : things) {
-            Object [] result2 = (Object[]) result;
-            for (Object o : result2) {
-                System.out.println("i : " + ((String) o.toString()));
+            return (PageData<E>) typedQueryBuilder.parseFilterExpression(Operation.SEARCH, entityClass, keyClass, filter, clause, getFormattedFields(fields), joins, null, paging);
+        }
+        finally {
+            if (joins != null && !joins.isEmpty()) {
+                joins.clear();
             }
         }
-        Page<E> page = crudService.findAll(specification, pageRequest);
-        Page<D> dtos = page.hasContent() ? modelMapper.pagedEntityToPagedDto(page) : Page.empty(pageRequest);
+    }
 
-        return dtos.getContent();
+    @Override
+    public Object search(Map<String, Object> filter, Map<String, Object> clause, List<String> fields, Aggregates aggregatesFilter, DataPaging paging) {
+        List<String> formattedFields = fields != null ? getFormattedFields(fields) : null;
+        Aggregates aggregates = getFormattedAggregates(aggregatesFilter, formattedFields);
+        return typedQueryBuilder.parseFilterExpression(Operation.SEARCH, entityClass, keyClass, filter, clause, formattedFields, null, aggregates, paging);
+    }
+
+    @Override
+    public long count(Map<String, Object> filter, Map<String, Object> clause, List<String> fields) {
+        return (long) typedQueryBuilder.parseFilterExpression(Operation.COUNT, entityClass, keyClass, filter, clause, getFormattedFields(fields), null, null, null);
     }
 
     /**
-     * Searches for entities based on a filter without paging, then converts the results to DTOs.
+     * Formats the provided aggregates and fields.
+     * <p>
+     * This method formats the aggregates by converting their fields to a standardized format.
+     * If the fields are not specified, it ensures that the fields not in the aggregates are included in the groupBy list.
+     * Expects the fields in the aggregates list to be in the format "field1.field2.field3" or "field1_field2_field3" and the fields list to be in the format "field1.field_x", "field2.field_z", "field3.field_y".
      *
-     * @param filter the filter criteria as a map of field names to values
-     * @return a list of DTOs matching the filter criteria
+     * @param aggregates The aggregates to be formatted.
+     * @param fields The list of fields to be included in the groupBy list if not already present.
+     * @return A new Aggregates object with formatted fields, or null if the input aggregates are null.
      */
-    @Override
-    public List<D> search(Map<String, Object> filter, Map<String, Object> clause, DataFetchingEnvironment environment) {
-        if (filter.isEmpty()) {
-            List<E> entityList = crudService.findAll();
-            return !entityList.isEmpty() ? modelMapper.entityToDto(entityList) : List.of();
+    static Aggregates getFormattedAggregates(Aggregates aggregates, List<String> fields) {
+        if (aggregates == null) {
+            return null;
         }
 
-        environment.getSelectionSet().getFields().forEach(x -> Fields.add(x.getName()));
-        System.out.println("Search 2");
-        System.out.println(Fields);
-        Specification<E> specification = JpaSpecificationBuilder.parseFilterExpression(filter, entityClass, getFormattedFields(Fields));
-        List<E> entityList = crudService.findAll(specification);
-        List<D> dtos = !entityList.isEmpty() ? modelMapper.entityToDto(entityList) : List.of();
-        return dtos;
-    }
+        // Helper method to get formatted fields or null
+        Function<List<String>, List<String>> formatFields = list ->
+                (list != null && !list.isEmpty()) ? getFormattedFields(list) : null;
 
-    @Override
-    public String count(Map<String, Object> filter, Map<String, Object> clause, List<String> fields) {
-        List<Object> things = TypedQueryBuilder.parseFilterExpression(filter, clause, entityClass, fields, Operation.COUNT);
-        System.out.println("things : " + things);
-        System.out.println("things length : " + things.size());
+        List<String> count = formatFields.apply(aggregates.count());
+        List<String> sum = formatFields.apply(aggregates.sum());
+        List<String> avg = formatFields.apply(aggregates.avg());
+        List<String> min = formatFields.apply(aggregates.min());
+        List<String> max = formatFields.apply(aggregates.max());
+        List<String> groupBy = formatFields.apply(aggregates.groupBy());
 
-        for (Object result : things) {
-            if (result instanceof Long)
-                return result.toString();
+        // If fields are specified, ensure groupBy includes missing fields
+        if (fields != null && !fields.isEmpty()) {
+            List<String> allFields = Stream.of(count, sum, avg, min, max)
+                    .filter(Objects::nonNull)
+                    .flatMap(List::stream)
+                    .toList();
+
+            if (groupBy == null) {
+                groupBy = new ArrayList<>();
+            }
+
+            List<String> finalGroupBy = groupBy;
+            fields.stream()
+                    .filter(field -> !allFields.isEmpty() && !finalGroupBy.contains(field))
+                    .forEach(groupBy::add);
+
+            if (groupBy.isEmpty()) {
+                groupBy = null;
+            }
         }
 
-        return "-1";
+        return new Aggregates(count, sum, avg, min, max, groupBy);
     }
 
-    private static List<String> getFormattedFields(List<String> fields) {
+    /**
+     * Formats the provided list of fields.
+     * <p>
+     * This method processes each field in the provided list and converts it to a standardized format.
+     * It handles fields containing ".data/", "/", or "_" by splitting and reformatting them.
+     * "/" come from the DataFetchingEnvironment, "_" come from custom fields in the GraphQL query.
+     * Fields related to pagination (e.g., "currentPage", "pageSize") are handled separately.
+     *
+     * @param fields The list of fields to be formatted.
+     * @return A list of formatted fields.
+     */
+    static List<String> getFormattedFields(List<String> fields) {
         List<String> formattedFields = new ArrayList<>();
+        if (fields == null || fields.isEmpty()) {
+            return formattedFields;
+        }
 
-        fields.forEach(x -> {
-            if (x.contains("/")) {
-                String[] parts = x.split("/");
-                StringBuilder newString = new StringBuilder(parts[0]);
-
-                for (int i = 1; i < parts.length; i++) {
-                    newString.append(".").append(parts[i].split("\\.")[1]);
-                }
-
-                String finalString = newString.toString();
-                if (!formattedFields.contains(finalString)) {
-                    formattedFields.add(finalString);
-                }
-            } else {
-                if (!x.contains("_results__count___"))
-                    if (!formattedFields.contains(x)) {
-                        formattedFields.add(x);
-                    }
+        for (String field : fields) {
+            if (field.contains(".data/")) {
+                field = field.substring(field.indexOf(".") + 1); // Remove the prefix before ".data/"
             }
-        });
+
+            if (field.contains("/")) {
+                formattedFields.add(formatNestedField(field, "/"));
+            } else if (field.contains("_")) {
+                formattedFields.add(formatNestedField(field, "_"));
+            } else {
+                // Handle special cases
+                if (!isExcludedField(field)) {
+                    formattedFields.add(field);
+                } else {
+                    addSpecialField(formattedFields, field);
+                }
+            }
+        }
 
         return formattedFields;
+    }
+
+    private static String formatNestedField(String field, String delimiter) {
+        String[] parts = field.split(delimiter);
+        StringBuilder formatted = new StringBuilder(parts[0]);
+
+        for (int i = 1; i < parts.length; i++) {
+            String[] subParts = parts[i].split("\\.");
+            formatted.append(".").append(subParts[subParts.length - 1]);
+        }
+
+        return formatted.toString();
+    }
+
+    private static boolean isExcludedField(String field) {
+        String[] excludedKeywords = {
+                "currentPage", "pageSize", "totalPages", "currentPageCount", "total"
+        };
+
+        for (String keyword : excludedKeywords) {
+            if (field.contains(keyword)) {
+                return true;
+            }
+        }
+
+        return field.split("\\.").length == 2 && field.endsWith(".data");
+    }
+
+    private static void addSpecialField(List<String> formattedFields, String field) {
+        if (field.contains("currentPage") && !formattedFields.contains("currentPage")) {
+            String[] parts = field.split("\\.");
+            if (parts.length == 2 && "currentPage".equals(parts[1]) && !formattedFields.contains("currentPage")) {
+                formattedFields.add("currentPage");
+            }
+        }
+        if (field.contains("pageSize") && !formattedFields.contains("pageSize")) {
+            formattedFields.add("pageSize");
+        }
+        if (field.contains("totalPages") && !formattedFields.contains("totalPages")) {
+            formattedFields.add("totalPages");
+        }
+        if (field.contains("currentPageCount") && !formattedFields.contains("currentPageCount")) {
+            formattedFields.add("currentPageCount");
+        }
+        if (field.contains("total")) {
+            String[] parts = field.split("\\.");
+            if (parts.length == 2 && "total".equals(parts[1]) && !formattedFields.contains("total")) {
+                formattedFields.add("total");
+            }
+        }
+    }
+
+
+    /**
+     * Extracts the list of fields from the DataFetchingEnvironment.
+     * <p>
+     * This method retrieves the fields from the provided DataFetchingEnvironment and returns them as a list of strings.
+     * It also processes any join arguments and adds them to the joins map.
+     *
+     * @param environment The DataFetchingEnvironment containing the selection set.
+     * @return A list of field names extracted from the environment, or null if the environment or its selection set is null.
+     */
+    List<String> extractFieldsFromEnvironment(DataFetchingEnvironment environment) {
+        if (environment == null || environment.getSelectionSet() == null || environment.getSelectionSet().getFields() == null) {
+            return new ArrayList<>();
+        }
+        if ( environment.getSelectionSet().getFields().isEmpty() ) {
+            return new ArrayList<>();
+        }
+        List<String> fields = new ArrayList<>();
+        environment.getSelectionSet().getFields().forEach(x -> {
+            fields.add(x.getFullyQualifiedName());
+            if (x.getArguments() != null && !x.getArguments().isEmpty()) {
+                x.getArguments().forEach((y, z) -> {
+                    if (y.contains("join"))
+                        joins.put(x.getFullyQualifiedName(), JoinType.valueOf(z.toString()));
+                });
+            }
+        });
+        return fields;
+    }
+
+    /**
+     * Processes the joins by formatting the join keys.
+     * <p>
+     * This method updates the `joins` map by formatting the keys using the `getFormattedFields` method.
+     * It creates a new map with the formatted keys and the corresponding join types, then replaces the original `joins` map with the updated one.
+     */
+    void processJoins() {
+        if (joins == null || joins.isEmpty()) {
+            return;
+        }
+
+        Map<String, JoinType> updatedJoins = new LinkedHashMap<>();
+        List<String> formattedFields = getFormattedFields(new ArrayList<>(joins.keySet()));
+        Iterator<String> keyIterator = joins.keySet().iterator();
+        Iterator<String> formattedFieldIterator = formattedFields.iterator();
+
+        while (keyIterator.hasNext() && formattedFieldIterator.hasNext()) {
+            String oldKey = keyIterator.next();
+            String newKey = formattedFieldIterator.next();
+            updatedJoins.put(newKey, joins.get(oldKey));
+        }
+
+        joins.clear();
+        joins.putAll(updatedJoins);
     }
 }

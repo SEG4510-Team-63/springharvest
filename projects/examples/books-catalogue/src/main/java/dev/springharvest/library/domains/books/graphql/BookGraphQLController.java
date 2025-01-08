@@ -1,12 +1,12 @@
 package dev.springharvest.library.domains.books.graphql;
 
 import dev.springharvest.crud.domains.base.graphql.AbstractGraphQLCrudController;
-import dev.springharvest.library.domains.books.models.dtos.BookDTO;
 import dev.springharvest.library.domains.books.models.entities.BookEntity;
 import java.util.*;
-import dev.springharvest.library.domains.books.services.BookQueryCrudService;
+
+import dev.springharvest.shared.constants.Aggregates;
 import dev.springharvest.shared.constants.DataPaging;
-import dev.springharvest.shared.domains.base.mappers.IBaseModelMapper;
+import dev.springharvest.shared.constants.PageData;
 import graphql.schema.DataFetchingEnvironment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,20 +16,24 @@ import org.springframework.stereotype.Controller;
 
 @Slf4j
 @Controller
-public class BookGraphQLController extends AbstractGraphQLCrudController<BookDTO, BookEntity, UUID> {
+public class BookGraphQLController extends AbstractGraphQLCrudController<BookEntity, UUID> {
 
-  @Autowired
-  protected BookGraphQLController(IBaseModelMapper<BookDTO, BookEntity, UUID> modelMapper, BookQueryCrudService baseService) {
-      super(modelMapper, baseService, BookEntity.class);
+  protected BookGraphQLController() {
+      super(BookEntity.class, UUID.class);
   }
 
     @QueryMapping
-    public List<BookDTO> searchBooks(@Argument Map<String, Object> filter, @Argument Map<String, Object> operation, @Argument DataPaging paging, DataFetchingEnvironment environment) {
-        return paging != null ? search(filter, operation, paging, environment) : search(filter, operation, environment);
+    public PageData<BookEntity> searchBooks(@Argument Map<String, Object> filter, @Argument Map<String, Object> clause, @Argument DataPaging paging, DataFetchingEnvironment environment) {
+        return search(filter, clause, paging, environment);
     }
 
     @QueryMapping
-    public String countBooks(@Argument Map<String, Object> filter, @Argument Map<String, Object> operation, @Argument List<String> fields) {
-        return count(filter, operation, fields);
+    public Object complexBooksSearch(@Argument Map<String, Object> filter, @Argument Map<String, Object> clause, @Argument List<String> fields, @Argument DataPaging paging, @Argument Aggregates aggregates) {
+        return search(filter, clause, fields, aggregates, paging);
+    }
+
+    @QueryMapping
+    public long countBooks(@Argument Map<String, Object> filter, @Argument Map<String, Object> clause, @Argument List<String> fields) {
+        return count(filter, clause, fields);
     }
 }

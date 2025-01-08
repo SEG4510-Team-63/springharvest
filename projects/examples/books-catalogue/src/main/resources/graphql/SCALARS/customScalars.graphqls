@@ -1,1 +1,0 @@
-scalar Date @specifiedBy(url: "https://scalars.graphql.org/andimarek/local-date")
